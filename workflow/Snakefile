@@ -1,10 +1,10 @@
-SAMPLES = ['GCF_000002655.1', 'GCA_024220425.1', 'GCA_040167795.1', 'GCA_040142955.1']
+configfile: "config/config.yaml"
 
 
 rule all:
     input:
-        expand("results/{sample}/result.tsv", sample=SAMPLES),
-        expand("results/{sample}/amplicons.fas", sample=SAMPLES),
+        expand("results/{sample}/result.tsv", sample=config["samples"]),
+        expand("results/{sample}/amplicons.fas", sample=config["samples"]),
 
 
 rule prep:

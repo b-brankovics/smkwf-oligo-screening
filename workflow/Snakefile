@@ -53,7 +53,7 @@ rule get_genome:
         zip=temp("resources/datasets/{id}.zip"),
         dir=temp(directory("resources/datasets/{id}"))
     conda:
-        "workflow/envs/ncbi-datasets.yaml"
+        "envs/ncbi-datasets.yaml"
     log:
         "logs/datasets/{id}.log",
     shell:

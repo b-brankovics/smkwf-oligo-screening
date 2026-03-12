@@ -1,0 +1,49 @@
+STRAf-2A:
+  F: STRAf-2AF
+  R: STRAf-2AR
+STRAf-2B:
+  F: STRAf-2BF
+  R: STRAf-2BR
+STRAf-2C:
+  F: STRAf-2CF
+  R: STRAf-2CR
+STRAf-3A:
+  F: STRAf-3AF
+  R: STRAf-3AR
+STRAf-3B:
+  F: STRAf-3BF
+  R: STRAf-3BR
+STRAf-3C:
+  F: STRAf-3CF
+  R: STRAf-3CR
+STRAf-4A:
+  F: STRAf-4AF
+  R: STRAf-4AR
+STRAf-4B:
+  F: STRAf-4BF
+  R: STRAf-4BR
+STRAf-4C:
+  F: STRAf-4CF
+  R: STRAf-4CR
+ITS:
+  F: ITS5
+  R: ITS4
+LSU:
+  F: LROR
+  R: LR5
+BenA:
+  F: Bt2a
+  R: Bt2b
+CaM:
+  F: cmd5
+  R: cmd6
+Act:
+  F: ACT-512F
+  R: ACT-783R
+rodA:
+  F: rodA1
+  R: rodA2
+CYP51A:
+  F: cyp51_F
+  R: cyp51_R
+  P: cyp51_LST

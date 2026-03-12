@@ -1,0 +1,9 @@
+name: primers
+channels:
+  - conda-forge
+  - bioconda
+  - b-brankovics
+dependencies:
+  - b-brankovics::sam-harmonization
+  - bioconda::perl-yaml
+  - bioconda::last

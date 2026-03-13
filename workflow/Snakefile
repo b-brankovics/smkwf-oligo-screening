@@ -1,9 +1,8 @@
-configfile: "config/config.yaml"
+include: "rules/common.smk"
 
 
 # load rules
 # -----------------------------------------------------
-include: "rules/common.smk"
 include: "rules/oligo-screening.smk"
 
 

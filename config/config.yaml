@@ -1,1 +1,2 @@
-samples: ['GCF_000002655.1', 'GCA_024220425.1', 'GCA_040167795.1', 'GCA_040142955.1']
+accessions: "config/accessions.tsv"
+local_samples: "config/local.tsv"

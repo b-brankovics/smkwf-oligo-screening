@@ -1,10 +1,16 @@
 configfile: "config/config.yaml"
 
 
+# load rules
+# -----------------------------------------------------
+include: "rules/common.smk"
+
+
 rule all:
     input:
-        expand("results/{sample}/result.tsv", sample=config["samples"]),
-        expand("results/{sample}/amplicons.fas", sample=config["samples"]),
+        expand("results/{sample}/result.tsv", sample=samples),
+        expand("results/{sample}/amplicons.fas", sample=samples),
+    default_target: True
 
 
 rule prep:
@@ -43,24 +49,35 @@ rule create_dict:
     wrapper:
         "v7.6.0/bio/picard/createsequencedictionary"
 
+# rule mark_download:
+#     output:
+#         expand("resources/missing-{sample}.txt", sample=accessions.index.tolist())
+#     shell:
+#         """
+#         touch {output}
+#         """
+
+
 
 rule get_genome:
     """
     Download data from NCBI and place it to correct location
     """
     output:
-        fasta="resources/genomes/{id}.fas",
-        zip=temp("resources/datasets/{id}.zip"),
-        dir=temp(directory("resources/datasets/{id}"))
+        fasta="resources/genomes/{sample}.fas",
+        zip=temp("resources/datasets/{sample}.zip"),
+        dir=temp(directory("resources/datasets/{sample}"))
     conda:
         "envs/ncbi-datasets.yaml"
     log:
-        "logs/datasets/{id}.log",
+        "logs/datasets/{sample}.log",
+    params:
+        accession=lambda wildcards: accessions.loc[wildcards.sample, 'assembly']
     shell:
         """
-        datasets download genome accession {wildcards.id} --include genome --filename {output.zip}
+        datasets download genome accession {params.accession} --include genome --filename {output.zip}
         unzip {output.dir}.zip -d {output.dir}
-        mv {output.dir}/ncbi_dataset/data/{wildcards.id}/{wildcards.id}*_genomic.fna {output.fasta}
+        mv {output.dir}/ncbi_dataset/data/{params.accession}/{params.accession}*_genomic.fna {output.fasta}
         """
 
 rule lastdb_transcript:
@@ -80,7 +97,7 @@ rule lastdb_transcript:
 
 rule lastal_nucl_x_nucl:
     input:
-        data="resources/genomes/{sample}.fas", # "input/{sample}.fas",
+        data=get_genome_fas, # "input/{sample}.fas",
         lastdb="resources/lastaldb.prj"
     output:
         # only one of these outputs is allowed
@@ -150,7 +167,7 @@ rule parse_primers:
 rule extract_amplicon_seqs:
     input:
         tsv="results/{sample}/result.tsv",
-        fas="resources/genomes/{sample}.fas", # "input/{sample}.fas"
+        fas=get_genome_fas, # "input/{sample}.fas"
     output:
         regions="results/{sample}/regions",
         amplicons="results/{sample}/amplicons.fas"

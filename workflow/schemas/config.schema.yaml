@@ -1,0 +1,13 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: main configuration schema for the workflow
+properties:
+  accessions:
+    type: string
+    description: path to sample-sheet for accessions TSV file
+  local_samples:
+    type: string
+    description: path to sample-sheet for local assemblies TSV file
+
+required:
+  - accessions
+  - local_samples

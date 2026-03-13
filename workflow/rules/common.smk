@@ -41,4 +41,4 @@ def get_genome_fas(wildcards):
     if wildcards.sample in local_samples.index:
         return local_samples.loc[wildcards.sample, 'assembly_file']
     elif wildcards.sample in accessions.index:
-        return "resources/genomes/{sample}.fas".format(accessions.loc[wildcards.sample, 'assembly'])
+        return f"resources/genomes/{wildcards.sample}.fas"

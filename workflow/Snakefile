@@ -147,33 +147,44 @@ rule iupacsam:
 
 rule parse_primers:
     input:
-        sam="results/{sample}/iupac.sam",
-        yaml="config/primers.yaml" # "resources/primers.yaml" Could be used instead
+        "results/{sample}/iupac.sam",
+        "config/primers.yaml" # "resources/primers.yaml" Could be used instead
     output:
-        parsed="results/{sample}/result.tsv"
+        "results/{sample}/result.tsv"
     conda:
         "envs/primers.yml"
     log:
         "logs/primer-parsing/parse-primers-{sample}.log"
+    script:
+        "scripts/sam-primers-and-probes.pl"
+
+rule extract_amplicon_regions:
+    input:
+        tsv="results/{sample}/result.tsv",
+    output:
+        regions="results/{sample}/regions",
+    conda:
+        "envs/primers.yml"
+    log:
+        "logs/extract-amplicons/extract-amplicons-regions-{sample}.log"
     shell:
         """
-        perl config/scripts/sam-primers-and-probes.pl {input.sam} {input.yaml} > {output.parsed} 2> {log}
+        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
         """
 
 
 rule extract_amplicon_seqs:
     input:
-        tsv="results/{sample}/result.tsv",
-        fas=get_genome_fas, # "input/{sample}.fas"
-    output:
+        get_genome_fas, # "input/{sample}.fas"
         regions="results/{sample}/regions",
-        amplicons="results/{sample}/amplicons.fas"
+    output:
+        "results/{sample}/amplicons.fas"
     conda:
         "envs/primers.yml"
+    params:
+        opts=lambda wildcards, input: f"-tab={input.regions}"
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log"
-    shell:
-        """
-        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
-        perl config/scripts/fasta_get_regions {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
-        """
+    script:
+        "scripts/fasta_get_regions.pl" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+

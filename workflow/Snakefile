@@ -182,7 +182,7 @@ rule extract_amplicon_seqs:
     conda:
         "envs/primers.yml"
     params:
-        opts=lambda wildcards, input: f"-tab={input.regions}"
+       opts=lambda wildcards: f"-tab=results/{wildcards.sample}/regions" #opts=lambda wildcards, input: f"-tab={input.regions}"  
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log"
     script:

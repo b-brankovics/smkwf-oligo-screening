@@ -175,7 +175,7 @@ rule extract_amplicon_regions:
 
 rule extract_amplicon_seqs:
     input:
-        get_genome_fas, # "input/{sample}.fas"
+        lambda wildcards: get_genome_fas(wildcards), # "input/{sample}.fas"
         regions="results/{sample}/regions",
     output:
         "results/{sample}/amplicons.fas"

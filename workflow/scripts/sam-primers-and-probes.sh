@@ -184,10 +184,13 @@ sub get_mismatches {
 EOF
 
 # Create temp perl file
-echo "${perl_script}" >temp.pl
+# cmd_file="${snakemake_rule}.pl" 
+cmd_file="${snakemake[rule]}_${snakemake_wildcards[sample]}.pl"
+echo "${perl_script}" >$cmd_file
+
 
 # run code
-perl temp.pl "${snakemake_input[0]}" "${snakemake_input[1]}" ${snakemake_params[opts]} > "${snakemake_output[0]}" 2>> "${snakemake_log[0]}"
+perl $cmd_file "${snakemake_input[0]}" "${snakemake_input[1]}" ${snakemake_params[opts]} > "${snakemake_output[0]}" 2>> "${snakemake_log[0]}"
 
 # Clean up
-rm temp.pl
+rm $cmd_file

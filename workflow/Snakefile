@@ -178,7 +178,9 @@ rule parse_primers:
     log:
         "logs/primer-parsing/parse-primers-{sample}.log"
     script:
-        "scripts/sam-primers-and-probes.pl"
+        "scripts/sam-primers-and-probes.sh"
+#     script:
+#         "scripts/sam-primers-and-probes.pl"
 
 rule extract_amplicon_regions:
     input:
@@ -208,5 +210,7 @@ rule extract_amplicon_seqs:
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log"
     script:
-        "scripts/fasta_get_regions.pl" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+        "scripts/fasta_get_regions.sh" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+#     script:
+#         "scripts/fasta_get_regions.pl" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
 

@@ -54,15 +54,19 @@ rule create_dict:
 #         touch {output}
 #         """
 
-ruleorder: get_genome > get_local_genome
+# ruleorder:  get_local_genome > get_genome  
+# ruleorder:  get_genome > get_local_genome  
 
 
+# LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
 rule get_local_genome:
     """
     Copy local genomes to the correct location
     """
     output:
         fasta="resources/genomes/{sample}.fas",
+    wildcard_constraints:
+        sample=LOCAL_SAMPLES
     conda:
         "envs/ncbi-datasets.yaml"
     log:
@@ -73,11 +77,12 @@ rule get_local_genome:
         import os
         import shutil
         try:
-            os.link(local_file, output[0]) 
+            os.link(params.local_file, output[0]) 
         except OSError:
-            shutil.copy2(local_file, output[0])
+            shutil.copy2(params.local_file, output[0])
 
 
+# ACCESSION_SAMPLES = accessions.index.tolist()
 rule get_genome:
     """
     Download data from NCBI and place it to correct location
@@ -86,6 +91,8 @@ rule get_genome:
         fasta="resources/genomes/{sample}.fas",
         zip=temp("resources/datasets/{sample}.zip"),
         dir=temp(directory("resources/datasets/{sample}"))
+    wildcard_constraints:
+        sample=ACCESSION_SAMPLES
     conda:
         "envs/ncbi-datasets.yaml"
     log:

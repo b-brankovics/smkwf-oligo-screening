@@ -31,6 +31,9 @@ accessions = (
 
 samples = local_samples.index.tolist() + accessions.index.tolist()
 
+LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
+ACCESSION_SAMPLES = "(" + ")|(".join(accessions.index.tolist()) + ")"
+
 # validate sample sheet and config file
 # validate(samples, schema="../schemas/samples.schema.yaml")
 # validate(samples, schema="../schemas/accessions.schema.yaml")

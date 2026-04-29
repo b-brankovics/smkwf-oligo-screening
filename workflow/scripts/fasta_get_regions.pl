@@ -1,6 +1,21 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings;
 use strict;
 use Pod::Usage;
+use Getopt::Long;
+
+my @requests;
+my $tabfile;
+my @fastas;
+GetOptions(
+	'tab=s' => \$tabfile,
+) or die "Incorrect usage!\n";;
+
+
+print "my ARGV: '@ARGV'\n";
+print "my tab: '$tabfile'\n";
+
+$tabfile =~ s/^~/$ENV{"HOME"}/;
 
 #===DESCRIPTION=================================================================
 # A tool to extract sequence regions from a multi fasta file
@@ -19,18 +34,16 @@ my %fas_data;
 # Array to store the order of the sequences
 my @ids;
 
-my @requests;
-my $tabfile;
-my $exact;
-my @fastas;
+# GetOptions ('tab' => \$tabfile, 'all' => \$all);
+
 for (@ARGV) {
     if (/\.fas$/ || /\.f[nas]?a$/ || /\.fasta$/ || /^-$/) {
 		push @fastas, $_;
-    } elsif (/^--?tab=(.+)$/) {
-		$tabfile = $1;
-		$tabfile =~ s/^~/$ENV{"HOME"}/;
-    } else {
-		push @requests, $_;
+#     } elsif (/^--?tab=(.+)$/) {
+# 		$tabfile = $1;
+# 		$tabfile =~ s/^~/$ENV{"HOME"}/;
+#     } else {
+# 		push @requests, $_;
     }
 }
 @ARGV = @fastas;

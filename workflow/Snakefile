@@ -54,6 +54,28 @@ rule create_dict:
 #         touch {output}
 #         """
 
+ruleorder: get_genome > get_local_genome
+
+
+rule get_local_genome:
+    """
+    Copy local genomes to the correct location
+    """
+    output:
+        fasta="resources/genomes/{sample}.fas",
+    conda:
+        "envs/ncbi-datasets.yaml"
+    log:
+        "logs/datasets/{sample}.log",
+    params:
+        local_file=lambda wildcards: local_samples.loc[wildcards.sample, 'assembly_file']
+    run:
+        import os
+        import shutil
+        try:
+            os.link(local_file, output[0]) 
+        except OSError:
+            shutil.copy2(local_file, output[0])
 
 
 rule get_genome:
@@ -94,7 +116,7 @@ rule lastdb_transcript:
 
 rule lastal_nucl_x_nucl:
     input:
-        data=get_genome_fas, # "input/{sample}.fas",
+        data="resources/genomes/{sample}.fas", # get_genome_fas, # "input/{sample}.fas",
         lastdb="resources/lastaldb.prj"
     output:
         # only one of these outputs is allowed
@@ -175,7 +197,7 @@ rule extract_amplicon_regions:
 
 rule extract_amplicon_seqs:
     input:
-        lambda wildcards: get_genome_fas(wildcards), # "input/{sample}.fas"
+        "resources/genomes/{sample}.fas", # get_genome_fas, # "input/{sample}.fas"
         regions="results/{sample}/regions",
     output:
         "results/{sample}/amplicons.fas"

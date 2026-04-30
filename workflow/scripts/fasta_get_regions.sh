@@ -12,9 +12,6 @@ GetOptions(
 ) or die "Incorrect usage!\n";;
 
 
-print "my ARGV: '@ARGV'\n";
-print "my tab: '$tabfile'\n";
-
 $tabfile =~ s/^~/$ENV{"HOME"}/;
 
 #===DESCRIPTION=================================================================

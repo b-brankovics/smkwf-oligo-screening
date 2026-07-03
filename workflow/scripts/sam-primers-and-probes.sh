@@ -1,3 +1,4 @@
+IFS='' read -r -d '' perl_script <<"EOF"
 #!/usr/bin/env perl
 
 use warnings;
@@ -180,3 +181,16 @@ sub get_mismatches {
     }
     return $sum, @counts;
 }
+EOF
+
+# Create temp perl file
+# cmd_file="${snakemake_rule}.pl" 
+cmd_file="${snakemake[rule]}_${snakemake_wildcards[sample]}.pl"
+echo "${perl_script}" >$cmd_file
+
+
+# run code
+perl $cmd_file "${snakemake_input[0]}" "${snakemake_input[1]}" ${snakemake_params[opts]} > "${snakemake_output[0]}" 2>> "${snakemake_log[0]}"
+
+# Clean up
+rm $cmd_file

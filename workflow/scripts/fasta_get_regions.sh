@@ -1,6 +1,18 @@
-#!/usr/bin/perl -w
-use strict;
+IFS='' read -r -d '' perl_script <<"EOF"
+#!/usr/bin/env perl
+use warnings;
 use Pod::Usage;
+use Getopt::Long;
+
+my @requests;
+my $tabfile;
+my @fastas;
+GetOptions(
+	'tab=s' => \$tabfile,
+) or die "Incorrect usage!\n";;
+
+
+$tabfile =~ s/^~/$ENV{"HOME"}/;
 
 #===DESCRIPTION=================================================================
 # A tool to extract sequence regions from a multi fasta file
@@ -19,18 +31,16 @@ my %fas_data;
 # Array to store the order of the sequences
 my @ids;
 
-my @requests;
-my $tabfile;
-my $exact;
-my @fastas;
+# GetOptions ('tab' => \$tabfile, 'all' => \$all);
+
 for (@ARGV) {
     if (/\.fas$/ || /\.f[nas]?a$/ || /\.fasta$/ || /^-$/) {
 		push @fastas, $_;
-    } elsif (/^--?tab=(.+)$/) {
-		$tabfile = $1;
-		$tabfile =~ s/^~/$ENV{"HOME"}/;
-    } else {
-		push @requests, $_;
+#     } elsif (/^--?tab=(.+)$/) {
+# 		$tabfile = $1;
+# 		$tabfile =~ s/^~/$ENV{"HOME"}/;
+#     } else {
+# 		push @requests, $_;
     }
 }
 @ARGV = @fastas;
@@ -249,3 +259,14 @@ Files with the following extensions are recognized as FASTA:
 FASTA format file is printed to STDOUT after filtering.
 
 =cut
+EOF
+
+# Create temp perl file
+cmd_file="${snakemake[rule]}_${snakemake_wildcards[sample]}.pl"
+echo "${perl_script}" >$cmd_file
+
+# run code
+perl $cmd_file "${snakemake_input[0]}"  ${snakemake_params[opts]} > "${snakemake_output[0]}" 2>> "${snakemake_log[0]}"
+
+# Clean up
+rm $cmd_file

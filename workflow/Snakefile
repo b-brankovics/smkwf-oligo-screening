@@ -1,10 +1,7 @@
-configfile: "config/config.yaml"
-
-
-# load rules
-# -----------------------------------------------------
 include: "rules/common.smk"
 
+
+##### Target rules #####
 
 rule all:
     input:
@@ -23,12 +20,10 @@ rule prep:
         fasta="resources/primers.fas"
     log:
        "logs/prep-primer-fasta.log",
-    run:
-        import pandas as pd
-        oligos = pd.read_table(input.tsv, usecols=['Name', 'Sequence'])
-        with open(output.fasta, "w") as f:
-            for index, row in oligos.iterrows():
-                f.write(">" + row['Name'] + "\n" + row['Sequence'] + "\n")
+    conda:
+        "envs/pandas.yaml"
+    script:
+        "scripts/prep-primer-fasta.py"
 
 
 rule create_dict:
@@ -57,8 +52,35 @@ rule create_dict:
 #         touch {output}
 #         """
 
+# ruleorder:  get_local_genome > get_genome  
+# ruleorder:  get_genome > get_local_genome  
 
 
+# LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
+rule get_local_genome:
+    """
+    Copy local genomes to the correct location
+    """
+    output:
+        fasta="resources/genomes/{sample}.fas",
+    wildcard_constraints:
+        sample=LOCAL_SAMPLES
+    conda:
+        "envs/ncbi-datasets.yaml"
+    log:
+        "logs/datasets/{sample}.log",
+    params:
+        local_file=lambda wildcards: local_samples.loc[wildcards.sample, 'assembly_file']
+    run:
+        import os
+        import shutil
+        try:
+            os.link(params.local_file, output[0]) 
+        except OSError:
+            shutil.copy2(params.local_file, output[0])
+
+
+# ACCESSION_SAMPLES = accessions.index.tolist()
 rule get_genome:
     """
     Download data from NCBI and place it to correct location
@@ -67,6 +89,8 @@ rule get_genome:
         fasta="resources/genomes/{sample}.fas",
         zip=temp("resources/datasets/{sample}.zip"),
         dir=temp(directory("resources/datasets/{sample}"))
+    wildcard_constraints:
+        sample=ACCESSION_SAMPLES
     conda:
         "envs/ncbi-datasets.yaml"
     log:
@@ -84,11 +108,10 @@ rule lastdb_transcript:
     input:
         "resources/primers.fas"
     output:
-        #"resources/primers.fas.prj"
         "resources/lastaldb.prj"
     params:
         protein_input=False,
-        extra="resources/lastaldb"
+        extra=lambda wildcards, output: os.path.splitext(output[0])[0],
     log:
         "logs/last/db.log"
     wrapper:
@@ -97,7 +120,7 @@ rule lastdb_transcript:
 
 rule lastal_nucl_x_nucl:
     input:
-        data=get_genome_fas, # "input/{sample}.fas",
+        data="resources/genomes/{sample}.fas", # get_genome_fas, # "input/{sample}.fas",
         lastdb="resources/lastaldb.prj"
     output:
         # only one of these outputs is allowed
@@ -150,33 +173,48 @@ rule iupacsam:
 
 rule parse_primers:
     input:
-        sam="results/{sample}/iupac.sam",
-        yaml="config/primers.yaml" # "resources/primers.yaml" Could be used instead
+        "results/{sample}/iupac.sam",
+        "config/primers.yaml" # "resources/primers.yaml" Could be used instead
     output:
-        parsed="results/{sample}/result.tsv"
+        "results/{sample}/result.tsv"
     conda:
         "envs/primers.yml"
     log:
         "logs/primer-parsing/parse-primers-{sample}.log"
+    script:
+        "scripts/sam-primers-and-probes.sh"
+#     script:
+#         "scripts/sam-primers-and-probes.pl"
+
+rule extract_amplicon_regions:
+    input:
+        tsv="results/{sample}/result.tsv",
+    output:
+        regions="results/{sample}/regions",
+    conda:
+        "envs/primers.yml"
+    log:
+        "logs/extract-amplicons/extract-amplicons-regions-{sample}.log"
     shell:
         """
-        perl config/scripts/sam-primers-and-probes.pl {input.sam} {input.yaml} > {output.parsed} 2> {log}
+        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
         """
 
 
 rule extract_amplicon_seqs:
     input:
-        tsv="results/{sample}/result.tsv",
-        fas=get_genome_fas, # "input/{sample}.fas"
-    output:
+        "resources/genomes/{sample}.fas", # get_genome_fas, # "input/{sample}.fas"
         regions="results/{sample}/regions",
-        amplicons="results/{sample}/amplicons.fas"
+    output:
+        "results/{sample}/amplicons.fas"
     conda:
         "envs/primers.yml"
+    params:
+       opts=lambda wildcards: f"-tab=results/{wildcards.sample}/regions" #opts=lambda wildcards, input: f"-tab={input.regions}"  
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log"
-    shell:
-        """
-        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
-        perl config/scripts/fasta_get_regions {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
-        """
+    script:
+        "scripts/fasta_get_regions.sh" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+#     script:
+#         "scripts/fasta_get_regions.pl" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+

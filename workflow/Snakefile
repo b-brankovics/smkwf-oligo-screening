@@ -26,6 +26,22 @@ rule prep:
         "scripts/prep-primer-fasta.py"
 
 
+rule prep_yaml:
+    """
+    Create YAML file for the primers and probes from config
+    """
+    input:
+        tsv="config/primers.tsv"
+    output:
+        yaml="resources/primers.yaml"
+    log:
+       "logs/prep-primer-yaml.log",
+    conda:
+        "envs/pandas.yaml"
+    script:
+        "scripts/prep-primer-yaml.py"
+
+
 rule create_dict:
     input:
         "resources/primers.fas",
@@ -174,11 +190,11 @@ rule iupacsam:
 rule parse_primers:
     input:
         "results/{sample}/iupac.sam",
-        "config/primers.yaml" # "resources/primers.yaml" Could be used instead
+        "resources/primers.yaml",
     output:
         "results/{sample}/result.tsv"
     conda:
-        "envs/primers.yml"
+        "envs/pandas.yaml"
     log:
         "logs/primer-parsing/parse-primers-{sample}.log"
     script:

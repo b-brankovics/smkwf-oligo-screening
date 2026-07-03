@@ -20,12 +20,10 @@ rule prep:
         fasta="resources/primers.fas"
     log:
        "logs/prep-primer-fasta.log",
-    run:
-        import pandas as pd
-        oligos = pd.read_table(input.tsv, usecols=['Name', 'Sequence'])
-        with open(output.fasta, "w") as f:
-            for index, row in oligos.iterrows():
-                f.write(">" + row['Name'] + "\n" + row['Sequence'] + "\n")
+    conda:
+        "envs/pandas.yaml"
+    script:
+        "scripts/prep-primer-fasta.py"
 
 
 rule create_dict:
@@ -110,11 +108,10 @@ rule lastdb_transcript:
     input:
         "resources/primers.fas"
     output:
-        #"resources/primers.fas.prj"
         "resources/lastaldb.prj"
     params:
         protein_input=False,
-        extra="resources/lastaldb"
+        extra=lambda wildcards, output: os.path.splitext(output[0])[0],
     log:
         "logs/last/db.log"
     wrapper:

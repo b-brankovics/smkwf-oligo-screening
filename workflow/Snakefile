@@ -200,7 +200,7 @@ rule parse_primers:
     output:
         "results/{sample}/result.tsv",
     conda:
-        "envs/pandas.yaml"
+        "envs/primers.yml"
     log:
         "logs/primer-parsing/parse-primers-{sample}.log",
     script:

@@ -5,10 +5,10 @@ include: "rules/common.smk"
 
 
 rule all:
+    default_target: True
     input:
         expand("results/{sample}/result.tsv", sample=samples),
         expand("results/{sample}/amplicons.fas", sample=samples),
-    default_target: True
 
 
 rule prep:
@@ -50,14 +50,10 @@ rule create_dict:
         "resources/primers.dict",
     log:
         "logs/picard/create_dict.log",
-    params:
-        extra="",  # optional: extra arguments for picard.
-    # optional specification of memory usage of the JVM that snakemake will respect with global
-    # resource restrictions (https://snakemake.readthedocs.io/en/latest/snakefiles/rules.html#resources)
-    # and which can be used to request RAM during cluster job submission as `{resources.mem_mb}`:
-    # https://snakemake.readthedocs.io/en/latest/executing/cluster.html#job-properties
     resources:
         mem_mb=1024,
+    params:
+        extra="",  # optional: extra arguments for picard.
     wrapper:
         "v7.6.0/bio/picard/createsequencedictionary"
 
@@ -81,12 +77,12 @@ rule get_local_genome:
     """
     output:
         fasta="resources/genomes/{sample}.fas",
+    log:
+        "logs/datasets/{sample}.log",
     wildcard_constraints:
         sample=LOCAL_SAMPLES,
     conda:
         "envs/ncbi-datasets.yaml"
-    log:
-        "logs/datasets/{sample}.log",
     params:
         local_file=lambda wildcards: local_samples.loc[
             wildcards.sample, "assembly_file"
@@ -110,12 +106,12 @@ rule get_genome:
         fasta="resources/genomes/{sample}.fas",
         zip=temp("resources/datasets/{sample}.zip"),
         dir=temp(directory("resources/datasets/{sample}")),
+    log:
+        "logs/datasets/{sample}.log",
     wildcard_constraints:
         sample=ACCESSION_SAMPLES,
     conda:
         "envs/ncbi-datasets.yaml"
-    log:
-        "logs/datasets/{sample}.log",
     params:
         accession=lambda wildcards: accessions.loc[wildcards.sample, "assembly"],
     shell:
@@ -131,32 +127,28 @@ rule lastdb_transcript:
         "resources/primers.fas",
     output:
         "resources/lastaldb.prj",
+    log:
+        "logs/last/db.log",
     params:
         protein_input=False,
         extra=lambda wildcards, output: os.path.splitext(output[0])[0],
-    log:
-        "logs/last/db.log",
     wrapper:
         "v8.0.3/bio/last/lastdb"
 
 
 rule lastal_nucl_x_nucl:
     input:
-        data="resources/genomes/{sample}.fas",  # get_genome_fas, # "input/{sample}.fas",
+        data="resources/genomes/{sample}.fas",
         lastdb="resources/lastaldb.prj",
     output:
-        # only one of these outputs is allowed
         maf="results/{sample}/lastal.maf",
-        #tab="test-transcript.tab",
-        #blasttab="test-transcript.blasttab",
-        #blasttabplus="test-transcript.blasttabplus",
+    log:
+        "logs/last/al-{sample}.log",
+    threads: 8
     params:
         #Report alignments that are expected by chance at most once per LENGTH query letters. By default, LAST reports alignments that are expected by chance at most once per million query letters (for a given database). http://last.cbrc.jp/doc/last-evalues.html
         D_length=1000000,
         extra="",
-    log:
-        "logs/last/al-{sample}.log",
-    threads: 8
     wrapper:
         "v8.0.3/bio/last/lastal"
 
@@ -167,13 +159,13 @@ rule maf_to_sam:
         dict="resources/primers.dict",
     output:
         sam="results/{sample}/lastal.sam",
-    conda:
-        "envs/primers.yml"
     log:
         "logs/last/maf-to-sam-{sample}.log",
+    conda:
+        "envs/primers.yml"
     shell:
         """
-        maf-convert sam -f {input.dict} -r 'ID:{wildcards.sample} SM:{wildcards.sample}' {input.maf} > {output.sam} 2> {log}
+        maf-convert sam -f {input.dict} -r 'ID:{wildcards.sample} SM:{wildcards.sample}' {input.maf} >{output.sam} 2>{log}
         """
 
 
@@ -183,13 +175,13 @@ rule iupacsam:
         primers="resources/primers.fas",
     output:
         iupac_sam="results/{sample}/iupac.sam",
-    conda:
-        "envs/primers.yml"
     log:
         "logs/sam-harmonization/iupac-sam-{sample}.log",
+    conda:
+        "envs/primers.yml"
     shell:
         """
-        sam-update-iupac.pl {input.sam} {input.primers} > {output.iupac_sam} 2> {log}
+        sam-update-iupac.pl {input.sam} {input.primers} >{output.iupac_sam} 2>{log}
         """
 
 
@@ -199,16 +191,12 @@ rule parse_primers:
         "resources/primers.yaml",
     output:
         "results/{sample}/result.tsv",
-    conda:
-        "envs/primers.yml"
     log:
         "logs/primer-parsing/parse-primers-{sample}.log",
+    conda:
+        "envs/primers.yml"
     script:
         "scripts/sam-primers-and-probes.sh"
-
-
-#     script:
-#         "scripts/sam-primers-and-probes.pl"
 
 
 rule extract_amplicon_regions:
@@ -216,10 +204,10 @@ rule extract_amplicon_regions:
         tsv="results/{sample}/result.tsv",
     output:
         regions="results/{sample}/regions",
-    conda:
-        "envs/primers.yml"
     log:
         "logs/extract-amplicons/extract-amplicons-regions-{sample}.log",
+    conda:
+        "envs/primers.yml"
     shell:
         """
         cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
@@ -228,19 +216,15 @@ rule extract_amplicon_regions:
 
 rule extract_amplicon_seqs:
     input:
-        "resources/genomes/{sample}.fas",  # get_genome_fas, # "input/{sample}.fas"
+        "resources/genomes/{sample}.fas",
         regions="results/{sample}/regions",
     output:
         "results/{sample}/amplicons.fas",
+    log:
+        "logs/extract-amplicons/extract-amplicons-{sample}.log",
     conda:
         "envs/primers.yml"
     params:
-        opts=lambda wildcards: f"-tab=results/{wildcards.sample}/regions",  #opts=lambda wildcards, input: f"-tab={input.regions}"  
-    log:
-        "logs/extract-amplicons/extract-amplicons-{sample}.log",
+        opts=lambda wildcards, input: f"-tab={input.regions}",
     script:
-        "scripts/fasta_get_regions.sh"  # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
-
-
-#     script:
-#         "scripts/fasta_get_regions.pl" # {input.fas} -tab={output.regions} > {output.amplicons} 2> {log}
+        "scripts/fasta_get_regions.sh"

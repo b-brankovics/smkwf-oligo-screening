@@ -1,0 +1,2 @@
+accessions: "config/accessions.tsv"
+local_samples: "config/local.tsv"

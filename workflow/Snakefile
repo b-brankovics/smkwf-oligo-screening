@@ -1,0 +1,230 @@
+include: "rules/common.smk"
+
+
+##### Target rules #####
+
+
+rule all:
+    default_target: True
+    input:
+        expand("results/{sample}/result.tsv", sample=samples),
+        expand("results/{sample}/amplicons.fas", sample=samples),
+
+
+rule prep:
+    """
+    Create FASTA file for the primers and probes from config
+    """
+    input:
+        tsv="config/primers.tsv",
+    output:
+        fasta="resources/primers.fas",
+    log:
+        "logs/prep-primer-fasta.log",
+    conda:
+        "envs/pandas.yaml"
+    script:
+        "scripts/prep-primer-fasta.py"
+
+
+rule prep_yaml:
+    """
+    Create YAML file for the primers and probes from config
+    """
+    input:
+        tsv="config/primers.tsv",
+    output:
+        yaml="resources/primers.yaml",
+    log:
+        "logs/prep-primer-yaml.log",
+    conda:
+        "envs/pandas.yaml"
+    script:
+        "scripts/prep-primer-yaml.py"
+
+
+rule create_dict:
+    input:
+        "resources/primers.fas",
+    output:
+        "resources/primers.dict",
+    log:
+        "logs/picard/create_dict.log",
+    resources:
+        mem_mb=1024,
+    params:
+        extra="",  # optional: extra arguments for picard.
+    wrapper:
+        "v7.6.0/bio/picard/createsequencedictionary"
+
+
+# rule mark_download:
+#     output:
+#         expand("resources/missing-{sample}.txt", sample=accessions.index.tolist())
+#     shell:
+#         """
+#         touch {output}
+#         """
+
+# ruleorder:  get_local_genome > get_genome
+# ruleorder:  get_genome > get_local_genome
+
+
+# LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
+rule get_local_genome:
+    """
+    Copy local genomes to the correct location
+    """
+    output:
+        fasta="resources/genomes/{sample}.fas",
+    log:
+        "logs/datasets/{sample}.log",
+    wildcard_constraints:
+        sample=LOCAL_SAMPLES,
+    conda:
+        "envs/ncbi-datasets.yaml"
+    params:
+        local_file=lambda wildcards: local_samples.loc[
+            wildcards.sample, "assembly_file"
+        ],
+    run:
+        import os
+        import shutil
+
+        try:
+            os.link(params.local_file, output[0])
+        except OSError:
+            shutil.copy2(params.local_file, output[0])
+
+
+# ACCESSION_SAMPLES = accessions.index.tolist()
+rule get_genome:
+    """
+    Download data from NCBI and place it to correct location
+    """
+    output:
+        fasta="resources/genomes/{sample}.fas",
+        zip=temp("resources/datasets/{sample}.zip"),
+        dir=temp(directory("resources/datasets/{sample}")),
+    log:
+        "logs/datasets/{sample}.log",
+    wildcard_constraints:
+        sample=ACCESSION_SAMPLES,
+    conda:
+        "envs/ncbi-datasets.yaml"
+    params:
+        accession=lambda wildcards: accessions.loc[wildcards.sample, "assembly"],
+    shell:
+        """
+        datasets download genome accession {params.accession} --include genome --filename {output.zip}
+        unzip {output.dir}.zip -d {output.dir}
+        mv {output.dir}/ncbi_dataset/data/{params.accession}/{params.accession}*_genomic.fna {output.fasta}
+        """
+
+
+rule lastdb_transcript:
+    input:
+        "resources/primers.fas",
+    output:
+        "resources/lastaldb.prj",
+    log:
+        "logs/last/db.log",
+    params:
+        protein_input=False,
+        extra=lambda wildcards, output: os.path.splitext(output[0])[0],
+    wrapper:
+        "v8.0.3/bio/last/lastdb"
+
+
+rule lastal_nucl_x_nucl:
+    input:
+        data="resources/genomes/{sample}.fas",
+        lastdb="resources/lastaldb.prj",
+    output:
+        maf="results/{sample}/lastal.maf",
+    log:
+        "logs/last/al-{sample}.log",
+    threads: 8
+    params:
+        #Report alignments that are expected by chance at most once per LENGTH query letters. By default, LAST reports alignments that are expected by chance at most once per million query letters (for a given database). http://last.cbrc.jp/doc/last-evalues.html
+        D_length=1000000,
+        extra="",
+    wrapper:
+        "v8.0.3/bio/last/lastal"
+
+
+rule maf_to_sam:
+    input:
+        maf="results/{sample}/lastal.maf",
+        dict="resources/primers.dict",
+    output:
+        sam="results/{sample}/lastal.sam",
+    log:
+        "logs/last/maf-to-sam-{sample}.log",
+    conda:
+        "envs/primers.yml"
+    shell:
+        """
+        maf-convert sam -f {input.dict} -r 'ID:{wildcards.sample} SM:{wildcards.sample}' {input.maf} >{output.sam} 2>{log}
+        """
+
+
+rule iupacsam:
+    input:
+        sam="results/{sample}/lastal.sam",
+        primers="resources/primers.fas",
+    output:
+        iupac_sam="results/{sample}/iupac.sam",
+    log:
+        "logs/sam-harmonization/iupac-sam-{sample}.log",
+    conda:
+        "envs/primers.yml"
+    shell:
+        """
+        sam-update-iupac.pl {input.sam} {input.primers} >{output.iupac_sam} 2>{log}
+        """
+
+
+rule parse_primers:
+    input:
+        "results/{sample}/iupac.sam",
+        "resources/primers.yaml",
+    output:
+        "results/{sample}/result.tsv",
+    log:
+        "logs/primer-parsing/parse-primers-{sample}.log",
+    conda:
+        "envs/primers.yml"
+    script:
+        "scripts/sam-primers-and-probes.sh"
+
+
+rule extract_amplicon_regions:
+    input:
+        tsv="results/{sample}/result.tsv",
+    output:
+        regions="results/{sample}/regions",
+    log:
+        "logs/extract-amplicons/extract-amplicons-regions-{sample}.log",
+    conda:
+        "envs/primers.yml"
+    shell:
+        """
+        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
+        """
+
+
+rule extract_amplicon_seqs:
+    input:
+        "resources/genomes/{sample}.fas",
+        regions="results/{sample}/regions",
+    output:
+        "results/{sample}/amplicons.fas",
+    log:
+        "logs/extract-amplicons/extract-amplicons-{sample}.log",
+    conda:
+        "envs/primers.yml"
+    params:
+        opts=lambda wildcards, input: f"-tab={input.regions}",
+    script:
+        "scripts/fasta_get_regions.sh"

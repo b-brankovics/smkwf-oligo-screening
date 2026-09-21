@@ -7,8 +7,8 @@ include: "rules/common.smk"
 rule all:
     default_target: True
     input:
-        expand("results/{sample}/result.tsv", sample=samples),
-        expand("results/{sample}/amplicons.fas", sample=samples),
+        expand("results/amplicon/{sample}/result.tsv", sample=samples),
+        expand("results/amplicon/{sample}/amplicons.fas", sample=samples),
 
 
 rule prep:
@@ -103,7 +103,7 @@ rule lastal_nucl_x_nucl:
         data=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
         lastdb="resources/lastaldb.prj",
     output:
-        maf="results/{sample}/lastal.maf",
+        maf="results/amplicon/{sample}/lastal.maf",
     log:
         "logs/last/al-{sample}.log",
     threads: 8
@@ -117,10 +117,10 @@ rule lastal_nucl_x_nucl:
 
 rule maf_to_sam:
     input:
-        maf="results/{sample}/lastal.maf",
+        maf="results/amplicon/{sample}/lastal.maf",
         dict="resources/primers.dict",
     output:
-        sam="results/{sample}/lastal.sam",
+        sam="results/amplicon/{sample}/lastal.sam",
     log:
         "logs/last/maf-to-sam-{sample}.log",
     conda:
@@ -133,10 +133,10 @@ rule maf_to_sam:
 
 rule iupacsam:
     input:
-        sam="results/{sample}/lastal.sam",
+        sam="results/amplicon/{sample}/lastal.sam",
         primers="resources/primers.fas",
     output:
-        iupac_sam="results/{sample}/iupac.sam",
+        iupac_sam="results/amplicon/{sample}/iupac.sam",
     log:
         "logs/sam-harmonization/iupac-sam-{sample}.log",
     conda:
@@ -149,10 +149,10 @@ rule iupacsam:
 
 rule parse_primers:
     input:
-        "results/{sample}/iupac.sam",
+        "results/amplicon/{sample}/iupac.sam",
         "resources/primers.yaml",
     output:
-        "results/{sample}/result.tsv",
+        "results/amplicon/{sample}/result.tsv",
     log:
         "logs/primer-parsing/parse-primers-{sample}.log",
     conda:
@@ -163,9 +163,9 @@ rule parse_primers:
 
 rule extract_amplicon_regions:
     input:
-        tsv="results/{sample}/result.tsv",
+        tsv="results/amplicon/{sample}/result.tsv",
     output:
-        regions="results/{sample}/regions",
+        regions="results/amplicon/{sample}/regions",
     log:
         "logs/extract-amplicons/extract-amplicons-regions-{sample}.log",
     conda:
@@ -179,9 +179,9 @@ rule extract_amplicon_regions:
 rule extract_amplicon_seqs:
     input:
         genome=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
-        regions="results/{sample}/regions",
+        regions="results/amplicon/{sample}/regions",
     output:
-        "results/{sample}/amplicons.fas",
+        "results/amplicon/{sample}/amplicons.fas",
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log",
     conda:

@@ -170,9 +170,18 @@ rule extract_amplicon_regions:
         "logs/extract-amplicons/extract-amplicons-regions-{sample}.log",
     conda:
         "envs/primers.yml"
+    params:
+        max_total_mismatches=5,
+        reject_primer_from=4,
+        min_amplicon_length=50,
+        max_amplicon_length=5000,
     shell:
         """
-        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
+        cat {input.tsv} | 
+        awk '$4 <= {params.max_amplicon_length} && $4 >= {params.min_amplicon_length}' |
+        awk '$5 <= {params.max_total_mismatches}' |
+        grep -P ':([{params.reject_primer_from}-9]|\\d\\d+)\\S*$' -v | 
+        awk -F'\\t' '{{print $2 "\\t" $1}}' >{output.regions} 2>{log}
         """
 
 

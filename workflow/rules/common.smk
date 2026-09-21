@@ -39,7 +39,6 @@ if accessions.index.has_duplicates:
     )
 
 
-
 # validate sample sheet and config file
 # validate(samples, schema="../schemas/samples.schema.yaml")
 # validate(samples, schema="../schemas/accessions.schema.yaml")
@@ -47,6 +46,16 @@ validate(local_samples, schema="../schemas/local_samples.schema.yaml")
 validate(accessions, schema="../schemas/accessions.schema.yaml")
 validate(config, schema="../schemas/config.schema.yaml")
 
+primers = (
+    pd.read_csv(config["primers"], sep="\t", dtype={"Locus": str})
+    .set_index(["Locus", "OligoType"], drop=False)
+    .sort_index()
+)
+validate(primers, schema="../schemas/primers.schema.yaml")
+if primers.index.has_duplicates:
+    raise ValueError(
+        f"Duplicate locus name and oligo type combinations found in primers sheet: {primers.index[primers.index.duplicated()].tolist()}"
+    )
 
 # Maybe we need to check if assembly_file column exists in accessions, if not create it
 accessions["assembly_file"] = (
@@ -65,7 +74,6 @@ samples = dataset.index.tolist()
 
 LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
 ACCESSION_SAMPLES = "(" + ")|(".join(accessions.index.tolist()) + ")"
-
 
 
 def get_genome_fas(wildcards):

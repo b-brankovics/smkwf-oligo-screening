@@ -1,0 +1,22 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: entries for the primers sample sheet
+properties:
+  Locus:
+    type: string
+    description: Locus or reaction name for the primer/probe set
+  Name:
+    type: string
+    description: Name of the primer/probe
+  Sequence:
+    type: string
+    description: Sequence of the primer/probe
+  OligoType:
+    type: string
+    description: Type of the oligo (primer or probe)
+    enum: [F, R, P]
+
+required:
+  - Locus
+  - Name
+  - Sequence
+  - OligoType

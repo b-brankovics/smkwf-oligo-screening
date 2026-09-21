@@ -58,45 +58,6 @@ rule create_dict:
         "v7.6.0/bio/picard/createsequencedictionary"
 
 
-# rule mark_download:
-#     output:
-#         expand("resources/missing-{sample}.txt", sample=accessions.index.tolist())
-#     shell:
-#         """
-#         touch {output}
-#         """
-
-# ruleorder:  get_local_genome > get_genome
-# ruleorder:  get_genome > get_local_genome
-
-
-# LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
-rule get_local_genome:
-    """
-    Copy local genomes to the correct location
-    """
-    output:
-        fasta="resources/genomes/{sample}.fas",
-    log:
-        "logs/datasets/{sample}.log",
-    wildcard_constraints:
-        sample=LOCAL_SAMPLES,
-    conda:
-        "envs/ncbi-datasets.yaml"
-    params:
-        local_file=lambda wildcards: local_samples.loc[
-            wildcards.sample, "assembly_file"
-        ],
-    run:
-        import os
-        import shutil
-
-        try:
-            os.link(params.local_file, output[0])
-        except OSError:
-            shutil.copy2(params.local_file, output[0])
-
-
 # ACCESSION_SAMPLES = accessions.index.tolist()
 rule get_genome:
     """
@@ -138,7 +99,8 @@ rule lastdb_transcript:
 
 rule lastal_nucl_x_nucl:
     input:
-        data="resources/genomes/{sample}.fas",
+        # data="resources/genomes/{sample}.fas",
+        data=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
         lastdb="resources/lastaldb.prj",
     output:
         maf="results/{sample}/lastal.maf",
@@ -216,7 +178,7 @@ rule extract_amplicon_regions:
 
 rule extract_amplicon_seqs:
     input:
-        "resources/genomes/{sample}.fas",
+        genome=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
         regions="results/{sample}/regions",
     output:
         "results/{sample}/amplicons.fas",
@@ -225,6 +187,6 @@ rule extract_amplicon_seqs:
     conda:
         "envs/primers.yml"
     params:
-        opts=lambda wildcards, input: f"-tab={input.regions}",
+        opts=lambda wildcards, input: f"{input.genome} -tab={input.regions}",
     script:
         "scripts/fasta_get_regions.sh"

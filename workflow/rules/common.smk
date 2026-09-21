@@ -57,9 +57,9 @@ if primers.index.has_duplicates:
         f"Duplicate locus name and oligo type combinations found in primers sheet: {primers.index[primers.index.duplicated()].tolist()}"
     )
 
-# Maybe we need to check if assembly_file column exists in accessions, if not create it
-accessions["assembly_file"] = (
-    "resources/genomes/" + accessions.index.astype(str) + ".fas"
+
+accessions["assembly_file"] = accessions["sample"].apply(
+    lambda sample: f"resources/genomes/{sample}.fas"
 )
 
 dataset = pd.concat([local_samples, accessions])

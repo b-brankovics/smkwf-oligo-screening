@@ -16,7 +16,7 @@ rule prep:
     Create FASTA file for the primers and probes from config
     """
     input:
-        tsv="config/primers.tsv",
+        tsv=config["primers"], # "config/primers.tsv",
     output:
         fasta="resources/primers.fas",
     log:
@@ -32,7 +32,7 @@ rule prep_yaml:
     Create YAML file for the primers and probes from config
     """
     input:
-        tsv="config/primers.tsv",
+        tsv=config["primers"], # "config/primers.tsv",
     output:
         yaml="resources/primers.yaml",
     log:
@@ -171,10 +171,10 @@ rule extract_amplicon_regions:
     conda:
         "envs/primers.yml"
     params:
-        max_total_mismatches=5,
-        reject_primer_from=4,
-        min_amplicon_length=50,
-        max_amplicon_length=5000,
+        max_total_mismatches=config["filtering"]["max_total_mismatches"], # 5,
+        reject_primer_from=config["filtering"]["reject_primer_from"], # 4,
+        min_amplicon_length=config["filtering"]["min_amplicon_length"], # 50,
+        max_amplicon_length=config["filtering"]["max_amplicon_length"], # 5000,
     shell:
         """
         cat {input.tsv} | 

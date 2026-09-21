@@ -7,8 +7,8 @@ include: "rules/common.smk"
 rule all:
     default_target: True
     input:
-        expand("results/{sample}/result.tsv", sample=samples),
-        expand("results/{sample}/amplicons.fas", sample=samples),
+        expand("results/amplicon/{sample}/result.tsv", sample=samples),
+        expand("results/amplicon/{sample}/amplicons.fas", sample=samples),
 
 
 rule prep:
@@ -16,7 +16,7 @@ rule prep:
     Create FASTA file for the primers and probes from config
     """
     input:
-        tsv="config/primers.tsv",
+        tsv=config["primers"],
     output:
         fasta="resources/primers.fas",
     log:
@@ -32,7 +32,7 @@ rule prep_yaml:
     Create YAML file for the primers and probes from config
     """
     input:
-        tsv="config/primers.tsv",
+        tsv=config["primers"],
     output:
         yaml="resources/primers.yaml",
     log:
@@ -56,45 +56,6 @@ rule create_dict:
         extra="",  # optional: extra arguments for picard.
     wrapper:
         "v7.6.0/bio/picard/createsequencedictionary"
-
-
-# rule mark_download:
-#     output:
-#         expand("resources/missing-{sample}.txt", sample=accessions.index.tolist())
-#     shell:
-#         """
-#         touch {output}
-#         """
-
-# ruleorder:  get_local_genome > get_genome
-# ruleorder:  get_genome > get_local_genome
-
-
-# LOCAL_SAMPLES = "(" + ")|(".join(local_samples.index.tolist()) + ")"
-rule get_local_genome:
-    """
-    Copy local genomes to the correct location
-    """
-    output:
-        fasta="resources/genomes/{sample}.fas",
-    log:
-        "logs/datasets/{sample}.log",
-    wildcard_constraints:
-        sample=LOCAL_SAMPLES,
-    conda:
-        "envs/ncbi-datasets.yaml"
-    params:
-        local_file=lambda wildcards: local_samples.loc[
-            wildcards.sample, "assembly_file"
-        ],
-    run:
-        import os
-        import shutil
-
-        try:
-            os.link(params.local_file, output[0])
-        except OSError:
-            shutil.copy2(params.local_file, output[0])
 
 
 # ACCESSION_SAMPLES = accessions.index.tolist()
@@ -138,10 +99,11 @@ rule lastdb_transcript:
 
 rule lastal_nucl_x_nucl:
     input:
-        data="resources/genomes/{sample}.fas",
+        # data="resources/genomes/{sample}.fas",
+        data=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
         lastdb="resources/lastaldb.prj",
     output:
-        maf="results/{sample}/lastal.maf",
+        maf="results/amplicon/{sample}/lastal.maf",
     log:
         "logs/last/al-{sample}.log",
     threads: 8
@@ -155,10 +117,10 @@ rule lastal_nucl_x_nucl:
 
 rule maf_to_sam:
     input:
-        maf="results/{sample}/lastal.maf",
+        maf="results/amplicon/{sample}/lastal.maf",
         dict="resources/primers.dict",
     output:
-        sam="results/{sample}/lastal.sam",
+        sam="results/amplicon/{sample}/lastal.sam",
     log:
         "logs/last/maf-to-sam-{sample}.log",
     conda:
@@ -171,10 +133,10 @@ rule maf_to_sam:
 
 rule iupacsam:
     input:
-        sam="results/{sample}/lastal.sam",
+        sam="results/amplicon/{sample}/lastal.sam",
         primers="resources/primers.fas",
     output:
-        iupac_sam="results/{sample}/iupac.sam",
+        iupac_sam="results/amplicon/{sample}/iupac.sam",
     log:
         "logs/sam-harmonization/iupac-sam-{sample}.log",
     conda:
@@ -187,10 +149,10 @@ rule iupacsam:
 
 rule parse_primers:
     input:
-        "results/{sample}/iupac.sam",
+        "results/amplicon/{sample}/iupac.sam",
         "resources/primers.yaml",
     output:
-        "results/{sample}/result.tsv",
+        "results/amplicon/{sample}/result.tsv",
     log:
         "logs/primer-parsing/parse-primers-{sample}.log",
     conda:
@@ -201,30 +163,39 @@ rule parse_primers:
 
 rule extract_amplicon_regions:
     input:
-        tsv="results/{sample}/result.tsv",
+        tsv="results/amplicon/{sample}/result.tsv",
     output:
-        regions="results/{sample}/regions",
+        regions="results/amplicon/{sample}/regions",
     log:
         "logs/extract-amplicons/extract-amplicons-regions-{sample}.log",
     conda:
         "envs/primers.yml"
+    params:
+        max_total_mismatches=config["filtering"]["max_total_mismatches"],
+        reject_primer_from=config["filtering"]["reject_primer_from"],
+        min_amplicon_length=config["filtering"]["min_amplicon_length"],
+        max_amplicon_length=config["filtering"]["max_amplicon_length"],
     shell:
         """
-        cat {input.tsv} | awk -F'\\t' '{{print $2 "\\t" $1}}' | tail -n +2 >{output.regions}
+        cat {input.tsv} | 
+        awk '$4 <= {params.max_amplicon_length} && $4 >= {params.min_amplicon_length}' |
+        awk '$5 <= {params.max_total_mismatches}' |
+        grep -P ':([{params.reject_primer_from}-9]|\\d\\d+)\\S*$' -v | 
+        awk -F'\\t' '{{print $2 "\\t" $1}}' >{output.regions} 2>{log}
         """
 
 
 rule extract_amplicon_seqs:
     input:
-        "resources/genomes/{sample}.fas",
-        regions="results/{sample}/regions",
+        genome=lambda wildcards: dataset.loc[wildcards.sample, "assembly_file"],
+        regions="results/amplicon/{sample}/regions",
     output:
-        "results/{sample}/amplicons.fas",
+        "results/amplicon/{sample}/amplicons.fas",
     log:
         "logs/extract-amplicons/extract-amplicons-{sample}.log",
     conda:
         "envs/primers.yml"
     params:
-        opts=lambda wildcards, input: f"-tab={input.regions}",
+        opts=lambda wildcards, input: f"{input.genome} -tab={input.regions}",
     script:
         "scripts/fasta_get_regions.sh"

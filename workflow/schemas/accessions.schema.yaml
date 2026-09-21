@@ -11,3 +11,7 @@ properties:
 required:
   - sample
   - assembly
+
+not:
+  anyOf:
+    - required: ["assembly_file"]

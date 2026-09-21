@@ -7,7 +7,33 @@ properties:
   local_samples:
     type: string
     description: path to sample-sheet for local assemblies TSV file
+  primers:
+    type: string
+    description: path to sample-sheet for primers TSV file
+  filtering:
+    type: object
+    description: parameters for filtering amplicons
+    properties:
+      min_amplicon_length:
+        type: integer
+        description: minimum length of amplicon to keep
+      max_amplicon_length:
+        type: integer
+        description: maximum length of amplicon to keep
+      max_total_mismatches:
+        type: integer
+        description: maximum number of total mismatches allowed for the oligos combined
+      reject_primer_from:
+        type: integer
+        description: minimum number mismatches per oligo that will reject the amplicon
+    required:
+      - min_amplicon_length
+      - max_amplicon_length
+      - max_total_mismatches
+      - reject_primer_from
 
 required:
   - accessions
   - local_samples
+  - primers
+  - filtering
